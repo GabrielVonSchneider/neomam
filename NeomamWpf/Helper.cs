@@ -1,5 +1,7 @@
-﻿using SkiaSharp;
+﻿using Melanchall.DryWetMidi.Core;
+using SkiaSharp;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Media;
 
@@ -16,5 +18,9 @@ namespace NeomamWpf
         }
 
         public static SKColor ToSkia(this Color c) => new SKColor(c.R, c.G, c.B, c.A);
+
+        public static string? GetName(this TrackChunk chunk) => chunk.Events
+            .OfType<SequenceTrackNameEvent>()
+            .FirstOrDefault()?.Text;
     }
 }

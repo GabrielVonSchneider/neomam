@@ -11,74 +11,90 @@
     xmlns:colorpicker="clr-namespace:ColorPicker;assembly=ColorPicker"
     d:DataContext="{d:DesignInstance Type=local:MainViewModel}"
 >
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="350"/>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="Auto"/>
-        </Grid.ColumnDefinitions>
-        <GridSplitter Grid.Column="0" Width="5" Grid.RowSpan="2"/>
-        <StackPanel
-            Margin="0,0,6,0"
-            Grid.Column="0"
-            Grid.Row="1"
-            Grid.RowSpan="2"
-        >
-            <Popup
-                x:Name="GlobalColorPopup"
-                x:FieldModifier="internal"
-                StaysOpen="False"
-                Grid.Row="1"
-                Grid.Column="0"
-                Placement="Center"
-            >
-                <colorpicker:StandardColorPicker
-                    x:Name="GlobalColorPicker"
-                    x:FieldModifier="internal"
-                    ColorChanged="GlobalColorPicker_ColorChanged"
-                />
-            </Popup>
-            <Button
-                x:Name="BackColorPicker"
-                Click="BackColorPicker_Click"
-            >
-                Background
-            </Button>
-            <ItemsControl ItemsSource="{Binding Channels}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <local:ChannelConfigEditor DataContext="{Binding}">
-                        </local:ChannelConfigEditor>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </StackPanel>
-        <Menu Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="3" Grid.RowSpan="1" >
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="bool2vis"/>
+    </Window.Resources>
+    <DockPanel
+    >
+        <Menu DockPanel.Dock="Top" Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="3" Grid.RowSpan="1" >
             <MenuItem Header="_File">
                 <MenuItem Header="_Open" Click="ClickFileOpen"/>
                 <MenuItem Header="_Save Project" Click="SaveProject_Click"/>
             </MenuItem>
         </Menu>
-        <skia:SKElement
-                Name="outputElement"
-                PaintSurface="OutputElement_PaintSurface"
-                Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="1"
+        <Grid 
+            DockPanel.Dock="Top"
+            VerticalAlignment="Stretch"
+            Margin="3,3,3,3"
+        >
+            <Grid.RowDefinitions>
+                <RowDefinition/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="350"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Label
+                Visibility="{Binding ShowError, Converter={StaticResource bool2vis}, FallbackValue=Collapsed}"
+                Panel.ZIndex="1"
+                Background="White"
+                Grid.RowSpan="2"
+                Grid.Column="0"
+                Grid.ColumnSpan="3"
+                Content="{Binding Error}"
+                HorizontalContentAlignment="Center"
+                VerticalContentAlignment="Center"
             />
-        <Slider
+            <StackPanel
+                Margin="0,0,6,0"
+                Grid.Column="0"
+                Grid.RowSpan="2"
+            >
+                <Popup
+                    x:Name="GlobalColorPopup"
+                    x:FieldModifier="internal"
+                    StaysOpen="False"
+                    Grid.Row="1"
+                    Grid.Column="0"
+                    Placement="Center"
+                >
+                    <colorpicker:StandardColorPicker
+                        x:Name="GlobalColorPicker"
+                        x:FieldModifier="internal"
+                        ColorChanged="GlobalColorPicker_ColorChanged"
+                    />
+                </Popup>
+                <Button
+                    x:Name="BackColorPicker"
+                    Click="BackColorPicker_Click"
+                >
+                    Background
+                </Button>
+                <ItemsControl ItemsSource="{Binding Channels}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <local:ChannelConfigEditor DataContext="{Binding}">
+                            </local:ChannelConfigEditor>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+            <skia:SKElement
+                Name="outputElement"
+                PaintSurface="OutputElement_PaintSurface" Grid.Column="1" Grid.ColumnSpan="1"
+            />
+            <Slider
                 Value="{Binding CurrentMicrosecond}"
                 Maximum="{Binding MaxMicrosecond}"
-                Name="timelineSlider" Grid.Row="2" Grid.ColumnSpan="2" Grid.Column="1" Grid.RowSpan="2"/>
-        <Slider 
+                Name="timelineSlider" Grid.Row="1" Grid.ColumnSpan="2" Grid.Column="1" Grid.RowSpan="2"/>
+            <Slider 
                 Value="{Binding TicksPerVertical}"
-                Name="zoomSlider"
-                Grid.Row="1" Grid.Column="3" Orientation="Vertical"
+                Name="zoomSlider" Grid.Column="3" Orientation="Vertical"
                 Minimum="10"
                 Maximum="40000"
             />
-    </Grid>
+        </Grid>
+    </DockPanel>
 </Window>

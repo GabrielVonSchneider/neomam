@@ -35,11 +35,31 @@ namespace NeomamWpf
             set => this.Set(() => this._config.TicksPerVertical, () => this._config.TicksPerVertical = value);
         }
 
+        private bool _showError;
+        public bool ShowError
+        {
+            get => this._showError;
+            set => this.Set(ref this._showError, value);
+        }
+
+        private string _error = "";
+        public string Error
+        {
+            get => this._error;
+            set => this.Set(ref this._error, value);
+        }
+
+        private void SetError(string error)
+        {
+            this.Error = error;
+            this.ShowError = !string.IsNullOrEmpty(error);
+        }
+
         public Color BackColor
         {
             get => this._config.BackColor is string backColor
                 ? (Color)ColorConverter.ConvertFromString(backColor)
-                : Color.FromRgb(255, 255, 255);
+                : Color.FromRgb(0, 0, 0);
             set => this.Set(() => this.BackColor, () => this._config.BackColor = value.ToString());
         }
 
@@ -53,31 +73,37 @@ namespace NeomamWpf
 
             this._config = new()
             {
-                BackColor = "#FFFFFFFF",
-                Channels = file
-                    .GetChannels()
-                    .OrderBy(ch => ch)
-                    .Select(ch => new ChannelConfig
-                    {
-                        ChannelNumber = ch,
-                    }).ToList(),
+                BackColor = "#FF000000",
+                Tracks = file
+                    .GetTrackChunks()
+                    .Select(ch => ch.Events.OfType<SequenceTrackNameEvent>().FirstOrDefault()?.Text)
+                    .Where(name => !string.IsNullOrEmpty(name))
+                    .Distinct()
+                    .Select(name => new TrackConfig(name ?? throw new InvalidOperationException()))
+                    .ToList(),
             };
 
-            this.Channels.AddRange(this._config.Channels.Select(ch => new ChannelConfigViewModel(this, ch)));
+            if (!this._config.Tracks.Any())
+            {
+                this.SetError("No named channels in midi file.");
+            }
+
+            this.Channels.AddRange(this._config.Tracks.Select(ch => new ChannelConfigViewModel(this, ch)));
         }
 
         public void DrawMidi(SKCanvas canvas)
         {
-            if (this._midiFile is null)
+            if (this._midiFile is null || !this._midiFile.GetNotes().Any())
             {
                 return;
             }
 
             var bounds = canvas.DeviceClipBounds;
-            var notes = this._midiFile.GetNotes();
 
-            var maxNote = (int)notes.Max(n => n.NoteNumber) + 1; //leave single note border
-            var minNote = (int)notes.Min(n => n.NoteNumber) - 1; //leave single note border
+            var allNotes = this._midiFile.GetNotes();
+
+            var maxNote = (int)allNotes.Max(n => n.NoteNumber) + 1; //leave single note border
+            var minNote = (int)allNotes.Min(n => n.NoteNumber) - 1; //leave single note border
             var verticalNotes = maxNote - minNote - 1;
 
             var noteHeight = bounds.Height / verticalNotes;
@@ -87,40 +113,48 @@ namespace NeomamWpf
             canvas.DrawRect(bounds, new SKPaint { Color = this.BackColor.ToSkia() });
             double microsecond = this.CurrentMicrosecond;
 
-            foreach (var note in notes)
+            foreach (var track in this._midiFile.GetTrackChunks())
             {
-                var x1 = (note.Time - microsecond) / ticksPerPixel + centerX;
-                var x2 = (note.Time + note.Length - microsecond) / ticksPerPixel + centerX;
-                var y1 = (maxNote - note.NoteNumber) * noteHeight;
-                var y2 = y1 + noteHeight;
-
-                if (x1 < bounds.Width)
+                foreach (var note in track.GetNotes())
                 {
-                    bool noteIsOn = note.Time <= microsecond && (note.Time + note.Length) >= microsecond;
-                    var onColor = new SKColor(100, 100, 100);
-                    var offColor = new SKColor(0, 0, 0);
+                    var x1 = (note.Time - microsecond) / ticksPerPixel + centerX;
+                    var x2 = (note.Time + note.Length - microsecond) / ticksPerPixel + centerX;
+                    var y1 = (maxNote - note.NoteNumber) * noteHeight;
+                    var y2 = y1 + noteHeight;
 
-                    if (this._config.Channels?.FirstOrDefault(x => x.ChannelNumber == note.Channel)
-                        is ChannelConfig conf)
+                    if (x1 < bounds.Width)
                     {
-                        if (SKColor.TryParse(conf.OnColor, out var parsed))
-                        {
-                            onColor = parsed;
-                        }
-                        if (SKColor.TryParse(conf.OffColor, out parsed))
-                        {
-                            offColor = parsed;
-                        }
-                    }
+                        bool noteIsOn = note.Time <= microsecond && (note.Time + note.Length) >= microsecond;
+                        var onColor = new SKColor(100, 100, 0xFF);
+                        var offColor = new SKColor(0, 0, 0xFF);
 
-                    var color = noteIsOn ? onColor : offColor;
-                    canvas.DrawRect(
-                            (float)x1,
-                            y1,
-                            (float)(x2 - x1),
-                            noteHeight,
-                            new SKPaint { Color = color, IsAntialias = true, }
-                        );
+                        if (this._config.Tracks?.FirstOrDefault(x => x.TrackName == track.GetName())
+                            is TrackConfig conf)
+                        {
+                            if (!conf.Visible)
+                            {
+                                continue;
+                            }
+
+                            if (SKColor.TryParse(conf.OnColor, out var parsed))
+                            {
+                                onColor = parsed;
+                            }
+                            if (SKColor.TryParse(conf.OffColor, out parsed))
+                            {
+                                offColor = parsed;
+                            }
+                        }
+
+                        var color = noteIsOn ? onColor : offColor;
+                        canvas.DrawRect(
+                                (float)x1,
+                                y1,
+                                (float)(x2 - x1),
+                                noteHeight,
+                                new SKPaint { Color = color, IsAntialias = true, }
+                            );
+                    } 
                 }
             }
         }
