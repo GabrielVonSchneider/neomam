@@ -19,7 +19,9 @@
         <Menu DockPanel.Dock="Top" Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="3" Grid.RowSpan="1" >
             <MenuItem Header="_File">
                 <MenuItem Header="_Open" Click="ClickFileOpen"/>
+                <MenuItem Header="Open _Project" Click="ClickOpenProject"/>
                 <MenuItem Header="_Save Project" Click="SaveProject_Click"/>
+                <MenuItem Header="_Render" Click="Render"/>
             </MenuItem>
         </Menu>
         <Grid 
@@ -81,10 +83,15 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </StackPanel>
-            <skia:SKElement
-                Name="outputElement"
-                PaintSurface="OutputElement_PaintSurface" Grid.Column="1" Grid.ColumnSpan="1"
-            />
+            <Grid
+                Background="Black"
+                Grid.Column="1" Grid.ColumnSpan="1"
+            >
+                <skia:SKElement
+                    Name="outputElement"
+                    PaintSurface="OutputElement_PaintSurface" 
+                />
+            </Grid>
             <Slider
                 Value="{Binding CurrentMicrosecond}"
                 Maximum="{Binding MaxMicrosecond}"

@@ -3,7 +3,10 @@ using Melanchall.DryWetMidi.Interaction;
 using SkiaSharp;
 using System;
 using System.Collections.ObjectModel;
+using System.IO;
+using System.IO.Compression;
 using System.Linq;
+using System.Text.Json;
 using System.Windows.Media;
 
 namespace NeomamWpf
@@ -19,9 +22,22 @@ namespace NeomamWpf
         private Config _config = new();
 
         public event Action? Redraw;
-        private MidiFile? _midiFile;
+        public MidiFile? MidiFile
+        {
+            get => _midiFile;
+            private set
+            {
+                this._midiFile = value;
+                this.MaxMicrosecond = (this._midiFile?.GetTotalMicroseconds() ?? 0);
+            }
+        }
 
-        public double MaxMicrosecond => this._midiFile?.GetNotes().Max(n => n.Time) ?? 1;
+        private double _maxMicrosecond;
+        public double MaxMicrosecond
+        {
+            get => this._maxMicrosecond;
+            set => this.Set(ref this._maxMicrosecond, value);
+        }
 
         public double CurrentMicrosecond
         {
@@ -35,6 +51,18 @@ namespace NeomamWpf
             set => this.Set(() => this._config.TicksPerVertical, () => this._config.TicksPerVertical = value);
         }
 
+        public bool DrawNoteOn
+        {
+            get => this._config.DrawNoteOn;
+            set => this.Set(() => this._config.DrawNoteOn, () => this._config.DrawNoteOn = value);
+        }
+
+        public bool DrawNoteOff
+        {
+            get => this._config.DrawNoteOff;
+            set => this.Set(() => this._config.DrawNoteOff, () => this._config.DrawNoteOff = value);
+        }
+
         private bool _showError;
         public bool ShowError
         {
@@ -43,6 +71,8 @@ namespace NeomamWpf
         }
 
         private string _error = "";
+        private MidiFile? _midiFile;
+
         public string Error
         {
             get => this._error;
@@ -57,19 +87,36 @@ namespace NeomamWpf
 
         public Color BackColor
         {
-            get => this._config.BackColor is string backColor
-                ? (Color)ColorConverter.ConvertFromString(backColor)
-                : Color.FromRgb(0, 0, 0);
+            get => this._config.GetMediaBackColor();
             set => this.Set(() => this.BackColor, () => this._config.BackColor = value.ToString());
         }
 
-        public ObservableCollection<ChannelConfigViewModel> Channels { get; }
-            = new ObservableCollection<ChannelConfigViewModel>();
+        public bool CanRender => this.MidiFile != null;
 
-        public void SetMidiFile(MidiFile file)
+        public ObservableCollection<TrackConfigViewModel> Channels { get; }
+            = new ObservableCollection<TrackConfigViewModel>();
+
+        public RenderViewModel CreateRenderJob()
+        {
+            return RenderViewModel.Create(this.MidiFile ?? throw new InvalidOperationException(), this._config);
+        }
+
+        private bool InitChannels()
+        {
+            if (this._config?.Tracks?.Any() != true)
+            {
+                this.SetError("No named channels in midi file.");
+                return false;
+            }
+
+            this.Channels.AddRange(this._config.Tracks.Select(ch => new TrackConfigViewModel(this, ch)));
+            return true;
+        }
+
+        public void InitFromMidi(MidiFile file)
         {
             this.Channels.Clear();
-            this._midiFile = file;
+            this.MidiFile = file;
 
             this._config = new()
             {
@@ -83,80 +130,66 @@ namespace NeomamWpf
                     .ToList(),
             };
 
-            if (!this._config.Tracks.Any())
-            {
-                this.SetError("No named channels in midi file.");
-            }
-
-            this.Channels.AddRange(this._config.Tracks.Select(ch => new ChannelConfigViewModel(this, ch)));
+            this.InitChannels();
         }
 
-        public void DrawMidi(SKCanvas canvas)
+        public void InitFromProject(string configPath)
         {
-            if (this._midiFile is null || !this._midiFile.GetNotes().Any())
+            this.Channels.Clear();
+            var tempDir = GetTempDir();
+            using var zipFile = ZipFile.OpenRead(configPath);
+            zipFile.ExtractToDirectory(tempDir.FullName);
+            using var jsonFile = File.OpenRead(Path.Combine(tempDir.FullName, "config.json"));
+            this._config = JsonSerializer.Deserialize<Config>(jsonFile) ?? throw new InvalidOperationException();
+            this.MidiFile = MidiFile.Read(Path.Combine(tempDir.FullName, "midi.midi"));
+            this.InitChannels();
+        }
+
+        public void SaveProject(string filePath)
+        {
+            if (this.MidiFile is null)
             {
                 return;
             }
 
-            var bounds = canvas.DeviceClipBounds;
-
-            var allNotes = this._midiFile.GetNotes();
-
-            var maxNote = (int)allNotes.Max(n => n.NoteNumber) + 1; //leave single note border
-            var minNote = (int)allNotes.Min(n => n.NoteNumber) - 1; //leave single note border
-            var verticalNotes = maxNote - minNote - 1;
-
-            var noteHeight = bounds.Height / verticalNotes;
-            var ticksPerPixel = this.TicksPerVertical / bounds.Height;
-            var centerX = bounds.Width / 2;
-
-            canvas.DrawRect(bounds, new SKPaint { Color = this.BackColor.ToSkia() });
-            double microsecond = this.CurrentMicrosecond;
-
-            foreach (var track in this._midiFile.GetTrackChunks())
+            //temp dir
+            var tempDir = GetTempDir();
+            var configJson = Path.Combine(tempDir.FullName, "config.json");
+            var midiName = Path.Combine(tempDir.FullName, "midi.midi");
+            //save config as json
+            using (var jsonFile = File.OpenWrite(configJson))
             {
-                foreach (var note in track.GetNotes())
-                {
-                    var x1 = (note.Time - microsecond) / ticksPerPixel + centerX;
-                    var x2 = (note.Time + note.Length - microsecond) / ticksPerPixel + centerX;
-                    var y1 = (maxNote - note.NoteNumber) * noteHeight;
-                    var y2 = y1 + noteHeight;
-
-                    if (x1 < bounds.Width)
-                    {
-                        bool noteIsOn = note.Time <= microsecond && (note.Time + note.Length) >= microsecond;
-                        var onColor = new SKColor(100, 100, 0xFF);
-                        var offColor = new SKColor(0, 0, 0xFF);
-
-                        if (this._config.Tracks?.FirstOrDefault(x => x.TrackName == track.GetName())
-                            is TrackConfig conf)
-                        {
-                            if (!conf.Visible)
-                            {
-                                continue;
-                            }
-
-                            if (SKColor.TryParse(conf.OnColor, out var parsed))
-                            {
-                                onColor = parsed;
-                            }
-                            if (SKColor.TryParse(conf.OffColor, out parsed))
-                            {
-                                offColor = parsed;
-                            }
-                        }
-
-                        var color = noteIsOn ? onColor : offColor;
-                        canvas.DrawRect(
-                                (float)x1,
-                                y1,
-                                (float)(x2 - x1),
-                                noteHeight,
-                                new SKPaint { Color = color, IsAntialias = true, }
-                            );
-                    } 
-                }
+                JsonSerializer.Serialize(jsonFile, this._config);
             }
+
+            this.MidiFile.Write(midiName);
+            File.Delete(filePath);
+
+            ZipFile.CreateFromDirectory(tempDir.FullName, filePath);
+        }
+
+        private static DirectoryInfo GetTempDir()
+        {
+            var dir = Directory.CreateDirectory(Path.Combine(
+                    Path.GetTempPath(),
+                    "neomam-temp-" + DateTime.Now.TimeOfDay.TotalMilliseconds.ToString()
+                ));
+            foreach (var file in dir.EnumerateFiles())
+            {
+                file.Delete();
+            }
+
+            return dir;
+        }
+
+        public void DrawMidi(SKCanvas canvas)
+        {
+            if (this.MidiFile is null || !this.MidiFile.GetNotes().Any())
+            {
+                return;
+            }
+
+            Common.DrawMidi(canvas, this.MidiFile, this._config, this.CurrentMicrosecond);
         }
 
         internal void NotifyConfigChanged()

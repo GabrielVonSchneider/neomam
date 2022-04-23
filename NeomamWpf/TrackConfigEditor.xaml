@@ -6,13 +6,32 @@
     xmlns:local="clr-namespace:NeomamWpf"
     mc:Ignorable="d"
     Background="White"
-    d:DataContext="{d:DesignInstance Type=local:ChannelConfigViewModel}" d:DesignHeight="59.147" d:DesignWidth="260.174">
-    <UserControl.Resources>
-    </UserControl.Resources>
+    d:DataContext="{d:DesignInstance Type=local:TrackConfigViewModel}" d:DesignHeight="59.147" d:DesignWidth="260.174">
     <StackPanel
         Orientation="Vertical"
     >
-        <Label Content="{Binding TrackName, FallbackValue=Channel Name}"></Label>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Label Content="{Binding TrackName, FallbackValue=Channel Name}"></Label>
+            <CheckBox
+                VerticalAlignment="Center"
+                Grid.Column="1"
+                IsChecked="{Binding IsDrumTrack}"
+            >
+            </CheckBox>
+            <Button
+                Name="EditDrumsButton"
+                VerticalAlignment="Center"
+                Grid.Column="2"
+                IsEnabled="{Binding IsDrumTrack}" Click="EditDrumsButton_Click"
+            >
+                Drums
+            </Button>
+        </Grid>
         <WrapPanel Orientation="Horizontal">
             <CheckBox IsChecked="{Binding Visible}" VerticalAlignment="Center" Margin="3,0,3,0">
                 Activated

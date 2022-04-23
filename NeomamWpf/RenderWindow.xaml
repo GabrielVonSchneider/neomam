@@ -1,0 +1,77 @@
+﻿<Window 
+    x:Class="NeomamWpf.RenderWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:local="clr-namespace:NeomamWpf"
+    mc:Ignorable="d"
+    xmlns:skia="clr-namespace:SkiaSharp.Views.WPF;assembly=SkiaSharp.Views.WPF"
+    Title="RenderWindow" Height="450" Width="800"
+    d:DataContext="{d:DesignInstance Type=local:RenderViewModel}"
+    >
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="bool2visconverter"/>
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="auto"/>
+        </Grid.RowDefinitions>
+        <StackPanel Orientation="Horizontal" IsEnabled="{Binding EnableInput}">
+            <Label>Start</Label>
+            <TextBox Width="100" VerticalAlignment="Center" Text="{Binding StartTime}"/>
+            <Separator Width="20" Opacity="0"/>
+            <Label>End</Label>
+            <TextBox Width="100" VerticalAlignment="Center" Text="{Binding EndTime}"/>
+            <Separator Width="20" Opacity="0"/>
+            <CheckBox IsChecked="{Binding DrawNoteOn}" VerticalAlignment="Center">Draw Note On</CheckBox>
+            <Separator Width="20" Opacity="0"/>
+            <CheckBox IsChecked="{Binding DrawNoteOff}" VerticalAlignment="Center">Draw Note Off</CheckBox>
+        </StackPanel>
+        <skia:SKElement
+            Grid.Row="1"
+            Name="_outputControl"
+            PaintSurface="SKElement_PaintSurface" Grid.RowSpan="2"
+        />
+        <Grid
+            Grid.Row="2"
+        >
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition Width="auto"/>
+                <ColumnDefinition Width="auto"/>
+            </Grid.ColumnDefinitions>
+            <Slider
+                HorizontalAlignment="Stretch"
+                Minimum="0"
+                Height="20" Grid.RowSpan="2"
+                Value="{Binding CurrentMicrosecond}"
+                Maximum="{Binding MaxMicroseconds}"
+                IsEnabled="{Binding EnableInput}"
+            />
+            <Button
+                Name="RenderButton"
+                Grid.Column="1"
+                HorizontalAlignment="Right"
+                Width="100"
+                Click="RenderButton_Click"
+                IsEnabled="{Binding EnableInput}"
+                Visibility="{Binding EnableInput, Converter={StaticResource bool2visconverter}}"
+            >
+                Render
+            </Button>
+            <Button
+                Name="CancelButton"
+                Grid.Column="2"
+                HorizontalAlignment="Right"
+                Width="100"
+                Click="CancelButton_Click"
+                Visibility="{Binding Busy, Converter={StaticResource bool2visconverter}}"
+            >
+                Cancel
+            </Button>
+        </Grid>
+    </Grid>
+</Window>

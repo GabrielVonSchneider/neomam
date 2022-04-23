@@ -1,0 +1,44 @@
+﻿<UserControl
+    x:Class="NeomamWpf.DrumNoteEditor"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+    xmlns:local="clr-namespace:NeomamWpf"
+    xmlns:skia="clr-namespace:SkiaSharp.Views.WPF;assembly=SkiaSharp.Views.WPF"
+    mc:Ignorable="d"
+    d:DataContext="PickImage"
+    d:Background="White"
+>
+    <StackPanel Orientation="Horizontal">
+        <Label Content="{Binding NoteNumber, FallbackValue=20}" VerticalAlignment="Center"/>
+        <TextBox
+            Text="{Binding Name, FallbackValue=Test Value}" Width="150"
+            VerticalAlignment="Center"
+        ></TextBox>
+        <TextBlock VerticalAlignment="Center">On</TextBlock>
+        <Border Margin="2,2,2,2" BorderThickness="1" BorderBrush="Black">
+            <skia:SKElement
+                Name="BeforeHitElement"
+                PaintSurface="PaintBeforeHitSurface"
+                Width="50"
+                Height="50"
+                MouseDown="PickBeforeHitImage"
+            />
+        </Border>
+        <TextBlock VerticalAlignment="Center">Off</TextBlock>
+        <Border
+            Margin="2,2,2,2"
+            BorderThickness="1"
+            BorderBrush="Black"
+        >
+            <skia:SKElement
+                Name="AfterHitElement"
+                MouseDown="PickAfterHitImage"
+                PaintSurface="PaintAfterHitSurface"
+                Width="50"
+                Height="50"
+            />
+        </Border>
+    </StackPanel>
+</UserControl>

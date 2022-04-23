@@ -11,7 +11,7 @@ namespace NeomamWpf
     /// </summary>
     public partial class ChannelConfigEditor : UserControl
     {
-        ChannelConfigViewModel? ViewModel => this.DataContext as ChannelConfigViewModel;
+        TrackConfigViewModel? ViewModel => this.DataContext as TrackConfigViewModel;
 
         private MainWindow GetMainWindow()
         {
@@ -56,6 +56,16 @@ namespace NeomamWpf
                     this.ViewModel.OffColor = c;
                 }
             });
+        }
+
+        private void EditDrumsButton_Click(object sender, RoutedEventArgs e)
+        {
+            var window = new DrumWindow
+            { 
+                DataContext = this.ViewModel?.Dto.Drums ?? throw new InvalidOperationException()
+            };
+
+            window.Show();
         }
     }
 }

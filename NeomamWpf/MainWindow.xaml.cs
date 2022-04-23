@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Media;
@@ -18,8 +19,6 @@ namespace NeomamWpf
     /// </summary>
     public partial class MainWindow : Window
     {
-        private MidiFile? _midiFile;
-
         private readonly MainViewModel _vm = new();
 
         public MainWindow()
@@ -45,35 +44,34 @@ namespace NeomamWpf
             this.outputElement.InvalidateVisual();
         }
 
+        private void ClickOpenProject(object sender, RoutedEventArgs e)
+        {
+            this.OpenFile("neomam|*.neomam");
+        }
+
         private void ClickFileOpen(object sender, RoutedEventArgs e)
         {
+            this.OpenFile("midi|*.mid");
+        }
+
+        private void OpenFile(string filter)
+        {
             //load the midi file.
-            var dlg = new OpenFileDialog
-            {
-                Filter = "midi|*.mid",
-            };
+            var dlg = new OpenFileDialog { Filter = filter, };
 
             if (dlg.ShowDialog() == true)
             {
-                this._midiFile = MidiFile.Read(dlg.FileName);
-                this._vm.SetMidiFile(_midiFile);
-
-                var tempoMap = this._midiFile.GetTempoMap();
-
-                this.timelineSlider.Minimum = 0;
-                Debug.WriteLine(this._midiFile.GetTempoMap().TimeDivision);
-                var endOfFile = this._midiFile.GetTimedEvents().Max(ev => ev.Time);
-                var fileLength = TimeConverter.ConvertTo<MetricTimeSpan>(endOfFile, tempoMap);
-                this.timelineSlider.Minimum = 0;
-                this.timelineSlider.Maximum = fileLength.TotalMicroseconds / 1000;
+                if (Path.GetExtension(dlg.FileName).StartsWith(".mid", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    this._vm.InitFromMidi(MidiFile.Read(dlg.FileName));
+                }
+                else
+                {
+                    this._vm.InitFromProject(dlg.FileName);
+                }
 
                 this.outputElement.InvalidateVisual();
             }
-        }
-
-        class DrawMidiParams
-        {
-            public double TicksPerVertical { get; set; }
         }
 
         private void OutputElement_PaintSurface(object sender, SKPaintSurfaceEventArgs e)
@@ -83,7 +81,11 @@ namespace NeomamWpf
 
         private void SaveProject_Click(object sender, RoutedEventArgs e)
         {
-
+            var dlg = new SaveFileDialog { Filter = "neomam|*.neomam" };
+            if (dlg.ShowDialog(this) == true)
+            {
+                this._vm.SaveProject(dlg.FileName);
+            }
         }
 
         private Action<Color>? _applyColor;
@@ -112,6 +114,12 @@ namespace NeomamWpf
             {
                 this._vm.BackColor = c;
             });
+        }
+
+        private void Render(object sender, RoutedEventArgs e)
+        {
+            var window = new RenderWindow(this._vm.CreateRenderJob());
+            window.Show();
         }
     }
 }
