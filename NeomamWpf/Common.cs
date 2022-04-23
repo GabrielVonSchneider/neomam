@@ -8,7 +8,7 @@ using System.Linq;
 
 namespace NeomamWpf
 {
-    class ConfiguredTrack
+    public class ConfiguredTrack
     {
         public ConfiguredTrack(TrackConfig config, IEnumerable<Note> notes)
         {
@@ -20,12 +20,58 @@ namespace NeomamWpf
         public IEnumerable<Note> Notes { get; }
     }
 
+    public class RenderContext
+    {
+        public static RenderContext? Get(MidiFile? midiFile, Config? config)
+        {
+            if (midiFile is null || !midiFile.GetNotes().Any())
+            {
+                return null;
+            }
+
+            if (config is null)
+            {
+                return null;
+            }
+
+            return new RenderContext(midiFile, config);
+        }
+
+        private RenderContext(MidiFile midiFile, Config config)
+        {
+            this.Midi = midiFile;
+            this.Config = config;
+            this.ConfiguredTracks = midiFile.GetConfiguredTracks(Config).ToList();
+
+            var allNotes = midiFile.GetNotes();
+            var drumNotes = this.ConfiguredTracks.Where(t => t.Config.IsDrumTrack).SelectMany(t => t.Notes).ToList();
+            var regularNotes = this.ConfiguredTracks.Where(t => !t.Config.IsDrumTrack).SelectMany(t => t.Notes).ToList();
+
+            var maxRegNote = (int)regularNotes.Max(n => n.NoteNumber);
+            this.MinRegNote = (int)regularNotes.Min(n => n.NoteNumber);
+            this.MaxNote = maxRegNote + 1; // leave single note border
+            var minNote = this.MinRegNote - drumNotes.Select(n => n.NoteNumber).Distinct().Count() - 1; //leave single note border
+            this.VerticalNotes = this.MaxNote - minNote - 1;
+        }
+
+        public MidiFile Midi { get; }
+        public Config Config { get; }
+        public int VerticalNotes { get; }
+
+        public List<ConfiguredTrack> ConfiguredTracks { get; }
+        public int MinRegNote { get; }
+        public int MaxNote { get; }
+
+        //calculate the max.
+        //calculate some kind of slot map? x let's just stick to conversion for now
+    }
+
     internal static class Common
     {
 
         public static IEnumerable<ConfiguredTrack> GetConfiguredTracks(this MidiFile midiFile, Config config)
         {
-            return config.Tracks.Safe().Select(t =>
+            return config.Tracks.Safe().Reverse().Select(t => //reverse so "top track = top layer"
             {
                 return new ConfiguredTrack(
                         t,
@@ -35,39 +81,23 @@ namespace NeomamWpf
             });
         }
 
-        public static void DrawMidi(SKCanvas canvas, MidiFile midiFile, Config config, double microsecond)
+        public static void DrawMidi(SKCanvas canvas, RenderContext context, double microsecond)
         {
-            if (!midiFile.GetNotes().Any())
-            {
-                return;
-            }
-
             var tick = TimeConverter.ConvertFrom(
                     new MetricTimeSpan((long)Math.Round(microsecond)),
-                    midiFile.GetTempoMap()
+                    context.Midi.GetTempoMap()
                 );
-
-            var tracks = midiFile.GetConfiguredTracks(config);
 
             var bounds = canvas.DeviceClipBounds;
             canvas.Clear();
-            canvas.DrawRect(bounds, new SKPaint { Color = config.GetMediaBackColor().ToSkia() });
+            canvas.DrawRect(bounds, new SKPaint { Color = context.Config.GetMediaBackColor().ToSkia() });
 
-            var allNotes = midiFile.GetNotes();
-            var drumNotes = tracks.Where(t => t.Config.IsDrumTrack).SelectMany(t => t.Notes).ToList();
-            var regularNotes = tracks.Where(t => !t.Config.IsDrumTrack).SelectMany(t => t.Notes).ToList();
+            
 
-            var maxRegNote = (int)regularNotes.Max(n => n.NoteNumber);
-            var minRegNote = (int)regularNotes.Min(n => n.NoteNumber);
-            var maxNote = maxRegNote + 1; // leave single note border
-            var minNote = minRegNote - drumNotes.Select(n => n.NoteNumber).Distinct().Count() - 1; //leave single note border
-            var verticalNotes = maxNote - minNote - 1;
-
-            var noteHeight = bounds.Height / verticalNotes;
-            var ticksPerPixel = config.TicksPerVertical / bounds.Height;
+            var slotHeight = bounds.Height / context.VerticalNotes;
             var centerX = bounds.Width / 2;
 
-            foreach (var cTrack in tracks)
+            foreach (var cTrack in context.ConfiguredTracks)
             {
                 foreach (var note in cTrack.Notes)
                 {
@@ -80,22 +110,30 @@ namespace NeomamWpf
                             .Enumerate()
                             .First(n => n.item.NoteNumber == note.NoteNumber)
                             ?? throw new InvalidOperationException();
-                        noteNumber = minRegNote - i - 1;
+                        noteNumber = context.MinRegNote - i - 1;
                     }
                     else
                     {
                         noteNumber = note.NoteNumber;
                     }
 
+                    var ticksPerVertical = context.Config.TicksPerVertical;
+                    if (cTrack.Config.ZoomInMultiplier is double zoomIn)
+                    {
+                        ticksPerVertical /= zoomIn;
+                    }
+
+                    var ticksPerPixel = ticksPerVertical / bounds.Height;
                     var x1 = (note.Time - tick) / (float)ticksPerPixel + centerX;
                     var x2 = (note.Time + note.Length - tick) / (float)ticksPerPixel + centerX;
-                    var y1 = (maxNote - noteNumber) * noteHeight;
+                    var noteHeight = (int)Math.Round(slotHeight * (float)(context.Config.TicksPerVertical / ticksPerVertical));
+                    var y1 = (context.MaxNote - noteNumber) * slotHeight;
                     var y2 = y1 + noteHeight;
 
                     if (x1 < bounds.Width)
                     {
                         bool noteIsOn = note.Time <= tick && (note.Time + note.Length) >= tick;
-                        if ((noteIsOn && !config.DrawNoteOn) || (!noteIsOn && !config.DrawNoteOff))
+                        if ((noteIsOn && !context.Config.DrawNoteOn) || (!noteIsOn && !context.Config.DrawNoteOff))
                         {
                             continue;
                         }
@@ -132,7 +170,7 @@ namespace NeomamWpf
                                 var rect = new SKRect(x1, y1, x2, y2);
                                 var fit = rect.AspectFit(svgSize.ToSizeI());
                                 canvas.Translate(x1, y1);
-                                canvas.Scale(0.2f);
+                                canvas.Scale(rect.Height / svgSize.Height);
                                 canvas.DrawPicture(svg.Picture, new SKPaint { Color = new SKColor(255, 255, 255, opacity)});
                                 canvas.ResetMatrix();
                             }

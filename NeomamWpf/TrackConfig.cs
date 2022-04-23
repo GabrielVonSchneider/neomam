@@ -37,7 +37,7 @@ namespace NeomamWpf
         public string? OffColor { get; set; }
         public bool Visible { get; set; }
         public string TrackName { get; set; }
-        public double TicksPerVertical { get; set; }
+        public double? ZoomInMultiplier { get; set; }
         public bool IsDrumTrack { get; set; }
         public DrumTrackConfig? Drums { get; set; }
     }
@@ -88,6 +88,11 @@ namespace NeomamWpf
             set => this.Set(() => this.OffColor, () => this.Dto.OffColor = value.ToString());
         }
 
+        internal void MoveTo(TrackConfigViewModel target, bool before)
+        {
+            this._parent.Reorder(this, target, before);
+        }
+
         public string TrackName => this.Dto.TrackName;
 
         public bool Visible
@@ -100,6 +105,47 @@ namespace NeomamWpf
         {
             get => this.Dto.IsDrumTrack;
             set => this.Set(() => this.Dto.IsDrumTrack, () => this.Dto.IsDrumTrack = value);
+        }
+
+        public double ZoomInMultiplier
+        {
+            get
+            {
+                if (this.Dto.ZoomInMultiplier is null)
+                {
+                    return 0;
+                }
+
+                return Math.Log2(this.Dto.ZoomInMultiplier.Value);
+            }
+            set => this.Set(
+                () => ZoomInMultiplier,
+                () => this.Dto.ZoomInMultiplier = Math.Pow(2, value)
+            );
+        }
+
+        public bool HasZoomConfigured
+        {
+            get => this.Dto.ZoomInMultiplier != null;
+            set
+            {
+                if (value == this.HasZoomConfigured)
+                {
+                    return;
+                }
+
+                if (value)
+                {
+                    this.ZoomInMultiplier = 0;
+                }
+                else
+                {
+                    this.Dto.ZoomInMultiplier = null;
+                    this.RaisePropChanged(nameof(this.ZoomInMultiplier));
+                }
+
+                this.RaisePropChanged(nameof(this.HasZoomConfigured));
+            }
         }
 
         public TrackConfig Dto { get; }

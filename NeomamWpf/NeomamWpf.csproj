@@ -5,7 +5,12 @@
     <TargetFramework>net6.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>neomam.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="neomam.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Melanchall.DryWetMidi" Version="6.0.1" />

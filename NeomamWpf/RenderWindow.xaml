@@ -7,7 +7,7 @@
     xmlns:local="clr-namespace:NeomamWpf"
     mc:Ignorable="d"
     xmlns:skia="clr-namespace:SkiaSharp.Views.WPF;assembly=SkiaSharp.Views.WPF"
-    Title="RenderWindow" Height="450" Width="800"
+    Title="Render" Height="450" Width="800"
     d:DataContext="{d:DesignInstance Type=local:RenderViewModel}"
     >
     <Window.Resources>

@@ -9,7 +9,7 @@ namespace NeomamWpf
     {
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        protected void Raise(string propName)
+        protected void RaisePropChanged(string propName)
             => this.OnPropertyChanged(new PropertyChangedEventArgs(propName));
 
         protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)
@@ -27,7 +27,7 @@ namespace NeomamWpf
             setter();
             if (!EqualityComparer<T>.Default.Equals(oldValue, getter()))
             {
-                Raise(propname ?? throw new ArgumentOutOfRangeException(nameof(propname)));
+                RaisePropChanged(propname ?? throw new ArgumentOutOfRangeException(nameof(propname)));
             }
         }
 
@@ -39,7 +39,7 @@ namespace NeomamWpf
             if (!EqualityComparer<T>.Default.Equals(field, value))
             {
                 field = value;
-                Raise(propname ?? throw new ArgumentOutOfRangeException(nameof(propname)));
+                RaisePropChanged(propname ?? throw new ArgumentOutOfRangeException(nameof(propname)));
             }
         }
     }

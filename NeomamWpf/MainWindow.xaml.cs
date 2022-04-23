@@ -1,4 +1,5 @@
-﻿using Melanchall.DryWetMidi.Core;
+﻿using ColorPicker.Models;
+using Melanchall.DryWetMidi.Core;
 using Melanchall.DryWetMidi.Interaction;
 using Microsoft.Win32;
 using SkiaSharp;
@@ -90,9 +91,14 @@ namespace NeomamWpf
 
         private Action<Color>? _applyColor;
 
-        internal void ShowColorPicker(Action<Color> applyColor)
+        internal void ShowColorPicker(Action<Color> applyColor, Color? c = null)
         {
             this._applyColor = applyColor;
+            if (c != null)
+            {
+                this.GlobalColorPicker.SelectedColor = c.Value;
+            }
+
             this.GlobalColorPopup.IsOpen = true;
         }
 
@@ -113,12 +119,15 @@ namespace NeomamWpf
             this.ShowColorPicker(c =>
             {
                 this._vm.BackColor = c;
-            });
+            }, this._vm.BackColor);
         }
 
         private void Render(object sender, RoutedEventArgs e)
         {
-            var window = new RenderWindow(this._vm.CreateRenderJob());
+            var window = new RenderWindow(this._vm.CreateRenderJob())
+            {
+                Owner = this,
+            };
             window.Show();
         }
     }

@@ -11,17 +11,15 @@ namespace NeomamWpf
 {
     public class RenderViewModel : ViewModelBase
     {
-        private MidiFile _midiFile;
-        private Config _config;
+        private RenderContext _renderCtx;
         public double MaxMicroseconds { get; set; }
 
         private CancellationTokenSource _cancelSource = new CancellationTokenSource();
 
         public RenderViewModel(MidiFile midiFile, Config config)
         {
-            this._midiFile = midiFile;
-            this._config = config;
-            this.MaxMicroseconds = this._midiFile.GetTotalMicroseconds();
+            this._renderCtx = RenderContext.Get(midiFile, config) ?? throw new InvalidOperationException("Tried to render empty file.");
+            this.MaxMicroseconds = this._renderCtx.Midi.GetTotalMicroseconds();
             this.PropertyChanged += this.OwnPropChanged;
             this._endTime = TimeSpan.FromMilliseconds(this.MaxMicroseconds / 1000);
         }
@@ -40,16 +38,18 @@ namespace NeomamWpf
             }
         }
 
+        public Config Config => this._renderCtx.Config;
+
         public bool DrawNoteOn
         {
-            get => this._config.DrawNoteOn;
-            set => this.Set(() => this._config.DrawNoteOn, () => this._config.DrawNoteOn = value);
+            get => this.Config.DrawNoteOn;
+            set => this.Set(() => this.Config.DrawNoteOn, () => this.Config.DrawNoteOn = value);
         }
 
         public bool DrawNoteOff
         {
-            get => this._config.DrawNoteOff;
-            set => this.Set(() => this._config.DrawNoteOff, () => this._config.DrawNoteOff = value);
+            get => this.Config.DrawNoteOff;
+            set => this.Set(() => this.Config.DrawNoteOff, () => this.Config.DrawNoteOff = value);
         }
 
         private TimeSpan _endTime;
@@ -75,7 +75,7 @@ namespace NeomamWpf
                 if (TimeSpan.TryParse(value, out var timeSpan)
                     && timeSpan.TotalMilliseconds * 1000 <= this.MaxMicroseconds)
                 {
-                    this.Set(ref this._endTime, timeSpan);
+                    this.Set(ref this._startTime, timeSpan);
                 }
             }
         }
@@ -113,7 +113,7 @@ namespace NeomamWpf
         public async void StartRender(string filename)
         {
             var microsecond = (this._startTime.TotalMilliseconds) * 1000;
-            var tempoMap = this._midiFile.GetTempoMap();
+            var tempoMap = this._renderCtx.Midi.GetTempoMap();
             var microsecondsIncrement = 1 / 60D * 1000 * 1000;
             using var surface = SKSurface.Create(new SKImageInfo(1920, 1080));
 
@@ -167,7 +167,7 @@ namespace NeomamWpf
 
         public void Draw(SKCanvas canvas, double microsecond)
         {
-            Common.DrawMidi(canvas, this._midiFile, this._config, microsecond);
+            Common.DrawMidi(canvas, this._renderCtx, microsecond);
         }
     }
 }

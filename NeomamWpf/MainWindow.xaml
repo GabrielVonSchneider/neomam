@@ -7,7 +7,7 @@
     xmlns:local="clr-namespace:NeomamWpf"
     mc:Ignorable="d"
     xmlns:skia="clr-namespace:SkiaSharp.Views.WPF;assembly=SkiaSharp.Views.WPF"
-    Title="MainWindow" Height="450" Width="800"
+    Title="neomam" Height="450" Width="800"
     xmlns:colorpicker="clr-namespace:ColorPicker;assembly=ColorPicker"
     d:DataContext="{d:DesignInstance Type=local:MainViewModel}"
 >
@@ -49,7 +49,7 @@
                 HorizontalContentAlignment="Center"
                 VerticalContentAlignment="Center"
             />
-            <StackPanel
+            <DockPanel
                 Margin="0,0,6,0"
                 Grid.Column="0"
                 Grid.RowSpan="2"
@@ -68,21 +68,27 @@
                         ColorChanged="GlobalColorPicker_ColorChanged"
                     />
                 </Popup>
-                <Button
+                <Button DockPanel.Dock="Top"
                     x:Name="BackColorPicker"
                     Click="BackColorPicker_Click"
                 >
                     Background
                 </Button>
-                <ItemsControl ItemsSource="{Binding Channels}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <local:ChannelConfigEditor DataContext="{Binding}">
-                            </local:ChannelConfigEditor>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
+                <ScrollViewer DockPanel.Dock="Top">
+                    <ItemsControl ItemsSource="{Binding Tracks}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border 
+                                    SnapsToDevicePixels="True"
+                                    BorderBrush="Gray" BorderThickness="0,0,0,1" Padding="0,0,0,3">
+                                    <local:TrackConfigEditor DataContext="{Binding}">
+                                    </local:TrackConfigEditor>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
             <Grid
                 Background="Black"
                 Grid.Column="1" Grid.ColumnSpan="1"

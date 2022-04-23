@@ -1,4 +1,5 @@
-﻿<UserControl x:Class="NeomamWpf.ChannelConfigEditor"
+﻿<UserControl
+    x:Class="NeomamWpf.TrackConfigEditor"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
@@ -6,7 +7,9 @@
     xmlns:local="clr-namespace:NeomamWpf"
     mc:Ignorable="d"
     Background="White"
-    d:DataContext="{d:DesignInstance Type=local:TrackConfigViewModel}" d:DesignHeight="59.147" d:DesignWidth="260.174">
+    d:DataContext="{d:DesignInstance Type=local:TrackConfigViewModel}" d:DesignHeight="64.897" d:DesignWidth="262.174"
+    AllowDrop="True"
+             >
     <StackPanel
         Orientation="Vertical"
     >
@@ -28,6 +31,7 @@
                 VerticalAlignment="Center"
                 Grid.Column="2"
                 IsEnabled="{Binding IsDrumTrack}" Click="EditDrumsButton_Click"
+                Margin="0,0,3,0"
             >
                 Drums
             </Button>
@@ -46,5 +50,14 @@
                 On Color
             </Button>
         </WrapPanel>
+        <DockPanel>
+            <CheckBox Margin="3,0,3,0" DockPanel.Dock="Left" IsChecked="{Binding HasZoomConfigured}">
+                Zoom
+            </CheckBox>
+            <Slider
+                MouseMove="Slider_MouseMove"
+                IsEnabled="{Binding HasZoomConfigured}" Value="{Binding ZoomInMultiplier}" Minimum="-1" Maximum="1"
+                Margin="0,0,0,3"/>
+        </DockPanel>
     </StackPanel>
 </UserControl>

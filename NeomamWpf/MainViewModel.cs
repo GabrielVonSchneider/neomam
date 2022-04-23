@@ -93,7 +93,7 @@ namespace NeomamWpf
 
         public bool CanRender => this.MidiFile != null;
 
-        public ObservableCollection<TrackConfigViewModel> Channels { get; }
+        public ObservableCollection<TrackConfigViewModel> Tracks { get; }
             = new ObservableCollection<TrackConfigViewModel>();
 
         public RenderViewModel CreateRenderJob()
@@ -109,13 +109,14 @@ namespace NeomamWpf
                 return false;
             }
 
-            this.Channels.AddRange(this._config.Tracks.Select(ch => new TrackConfigViewModel(this, ch)));
+            this.Tracks.Clear();
+            this.Tracks.AddRange(this._config.Tracks.Select(ch => new TrackConfigViewModel(this, ch)));
             return true;
         }
 
         public void InitFromMidi(MidiFile file)
         {
-            this.Channels.Clear();
+            this.Tracks.Clear();
             this.MidiFile = file;
 
             this._config = new()
@@ -133,9 +134,46 @@ namespace NeomamWpf
             this.InitChannels();
         }
 
+        public void Reorder(TrackConfigViewModel source, TrackConfigViewModel target, bool before)
+        {
+            //find the index of the source.
+            //find the index of the target
+            if (source == target)
+            {
+                return;
+            }
+
+            if (this._config.Tracks is null)
+            {
+                return;
+            }
+
+            //find index of target
+            var targetIndex = this._config.Tracks.IndexOf(target.Dto);
+            var sourceIndex = this._config.Tracks.IndexOf(source.Dto);
+            if (targetIndex == -1 || sourceIndex == -1)
+            {
+                return;
+            }
+
+            if (targetIndex > sourceIndex)
+            {
+                targetIndex--; //because we remove the source.
+            }
+
+            if (!before)
+            {
+                targetIndex++;
+            }
+
+            this._config.Tracks.RemoveAt(sourceIndex);
+            this._config.Tracks.Insert(targetIndex, source.Dto);
+            this.InitChannels();
+        }
+
         public void InitFromProject(string configPath)
         {
-            this.Channels.Clear();
+            this.Tracks.Clear();
             var tempDir = GetTempDir();
             using var zipFile = ZipFile.OpenRead(configPath);
             zipFile.ExtractToDirectory(tempDir.FullName);
@@ -182,14 +220,17 @@ namespace NeomamWpf
             return dir;
         }
 
+        public RenderContext? GetRenderContext()
+        {
+            return RenderContext.Get(this.MidiFile, this._config);
+        }
+
         public void DrawMidi(SKCanvas canvas)
         {
-            if (this.MidiFile is null || !this.MidiFile.GetNotes().Any())
+            if (this.GetRenderContext() is RenderContext ctx)
             {
-                return;
+                Common.DrawMidi(canvas, ctx, this.CurrentMicrosecond);
             }
-
-            Common.DrawMidi(canvas, this.MidiFile, this._config, this.CurrentMicrosecond);
         }
 
         internal void NotifyConfigChanged()
