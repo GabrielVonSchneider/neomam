@@ -7,7 +7,7 @@
     xmlns:local="clr-namespace:NeomamWpf"
     xmlns:skia="clr-namespace:SkiaSharp.Views.WPF;assembly=SkiaSharp.Views.WPF"
     mc:Ignorable="d"
-    d:DataContext="PickImage"
+    d:DataContext="{d:DesignInstance Type=local:DrumNote}"
     d:Background="White"
 >
     <StackPanel Orientation="Horizontal">
@@ -16,29 +16,40 @@
             Text="{Binding Name, FallbackValue=Test Value}" Width="150"
             VerticalAlignment="Center"
         ></TextBox>
-        <TextBlock VerticalAlignment="Center">On</TextBlock>
-        <Border Margin="2,2,2,2" BorderThickness="1" BorderBrush="Black">
+        <TextBlock VerticalAlignment="Center" Margin="3,0,0,0">On</TextBlock>
+        <Border
+            Margin="2,5,2,5"
+            BorderThickness="1"
+            BorderBrush="#FF868686"
+            VerticalAlignment="Center"
+        >
             <skia:SKElement
                 Name="BeforeHitElement"
                 PaintSurface="PaintBeforeHitSurface"
-                Width="50"
-                Height="50"
+                Width="35"
+                Height="35"
                 MouseDown="PickBeforeHitImage"
             />
         </Border>
         <TextBlock VerticalAlignment="Center">Off</TextBlock>
         <Border
-            Margin="2,2,2,2"
+            Margin="2,5,2,5"
             BorderThickness="1"
-            BorderBrush="Black"
+            BorderBrush="#FF868686"
+            VerticalAlignment="Center"
         >
             <skia:SKElement
                 Name="AfterHitElement"
                 MouseDown="PickAfterHitImage"
                 PaintSurface="PaintAfterHitSurface"
-                Width="50"
-                Height="50"
+                Width="35"
+                Height="35" 
             />
         </Border>
+        <Label VerticalAlignment="Center">Output Note</Label>
+        <TextBox VerticalAlignment="Center" Width="30" Text="{Binding OutputNoteNumber}">
+        </TextBox>
+        <Label VerticalAlignment="Center">Height</Label>
+        <TextBox VerticalAlignment="Center" Width="30" Text="{Binding HeightMultiplier}" Margin="0,0,3,0"></TextBox>
     </StackPanel>
 </UserControl>

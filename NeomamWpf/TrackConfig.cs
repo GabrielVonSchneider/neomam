@@ -66,7 +66,12 @@ namespace NeomamWpf
                     this.Dto.Drums.Notes.AddRange(track.GetNotes()
                             .Select(n => n.NoteNumber)
                             .Distinct()
-                            .Select(n => new DrumNote { NoteNumber = n, Name = $"Note {n}"})
+                            .Select(n => new DrumNote
+                            {
+                                NoteNumber = n,
+                                Name = $"Note {n}",
+                                OutputNoteNumber = n,
+                            })
                         );
                 }
             }

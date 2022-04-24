@@ -17,5 +17,7 @@ namespace NeomamWpf
         public int NoteNumber { get; set; }
         public string? AfterHitSvg { get; set; }
         public string? BeforeHitSvg { get; set; }
+        public int OutputNoteNumber { get; set; }
+        public double HeightMultiplier { get; set; } = 1;
     }
 }

@@ -8,16 +8,28 @@ using System.Linq;
 
 namespace NeomamWpf
 {
+    public class ConfiguredNote
+    {
+        public ConfiguredNote(Note note)
+        {
+            this.Note = note;
+        }
+
+        public Note Note { get; }
+        public DrumNote? DrumConfig { get; set; }
+        public int NoteNumber => this.DrumConfig?.OutputNoteNumber ?? Note.NoteNumber;
+    }
+
     public class ConfiguredTrack
     {
-        public ConfiguredTrack(TrackConfig config, IEnumerable<Note> notes)
+        public ConfiguredTrack(TrackConfig config, IEnumerable<ConfiguredNote> notes)
         {
             this.Config = config;
             this.Notes = notes;
         }
 
         public TrackConfig Config { get; }
-        public IEnumerable<Note> Notes { get; }
+        public IEnumerable<ConfiguredNote> Notes { get; }
     }
 
     public class RenderContext
@@ -43,15 +55,10 @@ namespace NeomamWpf
             this.Config = config;
             this.ConfiguredTracks = midiFile.GetConfiguredTracks(Config).ToList();
 
-            var allNotes = midiFile.GetNotes();
-            var drumNotes = this.ConfiguredTracks.Where(t => t.Config.IsDrumTrack).SelectMany(t => t.Notes).ToList();
-            var regularNotes = this.ConfiguredTracks.Where(t => !t.Config.IsDrumTrack).SelectMany(t => t.Notes).ToList();
-
-            var maxRegNote = (int)regularNotes.Max(n => n.NoteNumber);
-            this.MinRegNote = (int)regularNotes.Min(n => n.NoteNumber);
-            this.MaxNote = maxRegNote + 1; // leave single note border
-            var minNote = this.MinRegNote - drumNotes.Select(n => n.NoteNumber).Distinct().Count() - 1; //leave single note border
-            this.VerticalNotes = this.MaxNote - minNote - 1;
+            var allNotes = this.ConfiguredTracks.SelectMany(t => t.Notes).ToList();
+            this.MaxNote = allNotes.Max(n => n.NoteNumber) + 1; // leave single note border
+            this.MinNote = allNotes.Min(n => n.NoteNumber) - 1; // leave single note border
+            this.VerticalNotes = this.MaxNote - this.MinNote + 1;
         }
 
         public MidiFile Midi { get; }
@@ -59,7 +66,7 @@ namespace NeomamWpf
         public int VerticalNotes { get; }
 
         public List<ConfiguredTrack> ConfiguredTracks { get; }
-        public int MinRegNote { get; }
+        public int MinNote { get; }
         public int MaxNote { get; }
 
         //calculate the max.
@@ -71,12 +78,31 @@ namespace NeomamWpf
 
         public static IEnumerable<ConfiguredTrack> GetConfiguredTracks(this MidiFile midiFile, Config config)
         {
-            return config.Tracks.Safe().Reverse().Select(t => //reverse so "top track = top layer"
+            return config.Tracks.Safe()
+                .Where(t => t.Visible)
+                .Reverse() //reverse so "top track = top layer"
+                .Select(t => 
             {
+                var drums = new Dictionary<int, DrumNote>();
+                if (t.IsDrumTrack && t.Drums != null)
+                {
+                    drums = t.Drums.Notes.ToDictionary(n => n.NoteNumber);
+                }
+
                 return new ConfiguredTrack(
                         t,
                         midiFile.Chunks.OfType<TrackChunk>().Where(ch => ch.GetName() == t.TrackName)
                             .SelectMany(ch => ch.GetNotes())
+                            .Select(n =>
+                            {
+                                var cNote = new ConfiguredNote(n);
+                                if (drums.TryGetValue(n.NoteNumber, out var drumNote))
+                                {
+                                    cNote.DrumConfig = drumNote;
+                                }
+
+                                return cNote;
+                            })
                     );
             });
         }
@@ -101,22 +127,6 @@ namespace NeomamWpf
             {
                 foreach (var note in cTrack.Notes)
                 {
-                    int noteNumber;
-                    DrumNote? drumNoteConfig = null;
-                    if (cTrack.Config.IsDrumTrack)
-                    {
-                        int i;
-                        (i, drumNoteConfig) = cTrack.Config.Drums?.Notes
-                            .Enumerate()
-                            .First(n => n.item.NoteNumber == note.NoteNumber)
-                            ?? throw new InvalidOperationException();
-                        noteNumber = context.MinRegNote - i - 1;
-                    }
-                    else
-                    {
-                        noteNumber = note.NoteNumber;
-                    }
-
                     var ticksPerVertical = context.Config.TicksPerVertical;
                     if (cTrack.Config.ZoomInMultiplier is double zoomIn)
                     {
@@ -124,23 +134,23 @@ namespace NeomamWpf
                     }
 
                     var ticksPerPixel = ticksPerVertical / bounds.Height;
-                    var x1 = (note.Time - tick) / (float)ticksPerPixel + centerX;
-                    var x2 = (note.Time + note.Length - tick) / (float)ticksPerPixel + centerX;
+                    var x1 = (note.Note.Time - tick) / (float)ticksPerPixel + centerX;
+                    var x2 = (note.Note.Time + note.Note.Length - tick) / (float)ticksPerPixel + centerX;
                     var noteHeight = (int)Math.Round(slotHeight * (float)(context.Config.TicksPerVertical / ticksPerVertical));
-                    var y1 = (context.MaxNote - noteNumber) * slotHeight;
+                    var y1 = (context.MaxNote - note.NoteNumber) * slotHeight;
                     var y2 = y1 + noteHeight;
 
                     if (x1 < bounds.Width)
                     {
-                        bool noteIsOn = note.Time <= tick && (note.Time + note.Length) >= tick;
+                        bool noteIsOn = note.Note.Time <= tick && (note.Note.Time + note.Note.Length) >= tick;
                         if ((noteIsOn && !context.Config.DrawNoteOn) || (!noteIsOn && !context.Config.DrawNoteOff))
                         {
                             continue;
                         }
 
-                        if (drumNoteConfig != null)
+                        if (note.DrumConfig is DrumNote drumNoteConfig)
                         {
-                            bool isBeforeHit = note.Time > tick;
+                            bool isBeforeHit = note.Note.Time > tick;
                             string? svgString = isBeforeHit ? drumNoteConfig.BeforeHitSvg : drumNoteConfig.AfterHitSvg;
                             if (svgString != null)
                             {
@@ -153,7 +163,7 @@ namespace NeomamWpf
                                 else
                                 {
                                     //fade out
-                                    var delta = tick - note.Time;
+                                    var delta = tick - note.Note.Time;
                                     if (delta > ticksFadeout)
                                     {
                                         opacity = 0;
