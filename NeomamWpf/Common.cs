@@ -136,7 +136,14 @@ namespace NeomamWpf
                     var ticksPerPixel = ticksPerVertical / bounds.Height;
                     var x1 = (note.Note.Time - tick) / (float)ticksPerPixel + centerX;
                     var x2 = (note.Note.Time + note.Note.Length - tick) / (float)ticksPerPixel + centerX;
-                    var noteHeight = (int)Math.Round(slotHeight * (float)(context.Config.TicksPerVertical / ticksPerVertical));
+
+                    var noteHeightFloat = slotHeight * context.Config.TicksPerVertical / ticksPerVertical;
+                    if (note.DrumConfig != null)
+                    {
+                        noteHeightFloat *= note.DrumConfig.HeightMultiplier;
+                    }
+                    var noteHeight = (int)Math.Round(noteHeightFloat);
+
                     var y1 = (context.MaxNote - note.NoteNumber) * slotHeight;
                     var y2 = y1 + noteHeight;
 
@@ -151,14 +158,13 @@ namespace NeomamWpf
                         if (note.DrumConfig is DrumNote drumNoteConfig)
                         {
                             bool isBeforeHit = note.Note.Time > tick;
-                            string? svgString = isBeforeHit ? drumNoteConfig.BeforeHitSvg : drumNoteConfig.AfterHitSvg;
-                            if (svgString != null)
+                            if (drumNoteConfig.BeforeHitSvg != null || drumNoteConfig.AfterHitSvg != null)
                             {
                                 const long ticksFadeout = 1000;
-                                byte opacity;
+                                byte onOpacity;
                                 if (isBeforeHit)
                                 {
-                                    opacity = 255;
+                                    onOpacity = 0;
                                 }
                                 else
                                 {
@@ -166,23 +172,25 @@ namespace NeomamWpf
                                     var delta = tick - note.Note.Time;
                                     if (delta > ticksFadeout)
                                     {
-                                        opacity = 0;
+                                        onOpacity = 0;
                                     }
                                     else
                                     {
-                                        opacity = (byte)((ticksFadeout - delta) * 255 / ticksFadeout);
+                                        onOpacity = (byte)((ticksFadeout - delta) * 255 / ticksFadeout);
                                     }
                                 }
-
-                                var svg = new SKSvg();
-                                svg.FromSvg(svgString);
-                                var svgSize = svg.Picture?.CullRect.Size ?? throw new InvalidOperationException("no svg picture");
+                                byte offOpacity = (byte)(255 - onOpacity);
                                 var rect = new SKRect(x1, y1, x2, y2);
-                                var fit = rect.AspectFit(svgSize.ToSizeI());
-                                canvas.Translate(x1, y1);
-                                canvas.Scale(rect.Height / svgSize.Height);
-                                canvas.DrawPicture(svg.Picture, new SKPaint { Color = new SKColor(255, 255, 255, opacity)});
-                                canvas.ResetMatrix();
+
+                                if (drumNoteConfig.BeforeHitSvg != null)
+                                {
+                                    DrawSvg(canvas, drumNoteConfig.BeforeHitSvg, offOpacity, rect);
+                                }
+
+                                if (drumNoteConfig.AfterHitSvg != null)
+                                {
+                                    DrawSvg(canvas, drumNoteConfig.AfterHitSvg, onOpacity, rect);
+                                }
                             }
                         }
                         else
@@ -208,13 +216,25 @@ namespace NeomamWpf
                                 (float)x1,
                                 y1,
                                 (float)(x2 - x1),
-                                noteHeight,
+                                (int)Math.Round(noteHeightFloat),
                                 new SKPaint { Color = noteIsOn ? onColor : offColor, IsAntialias = true, }
                             );
                         }
                     }
                 }
             }
+        }
+
+        private static void DrawSvg(SKCanvas canvas, string svgString, byte onOpacity, SKRect rect)
+        {
+            var svg = new SKSvg();
+            svg.FromSvg(svgString);
+            var svgSize = svg.Picture?.CullRect.Size ?? throw new InvalidOperationException("no svg picture");
+            var fit = rect.AspectFit(svgSize.ToSizeI());
+            canvas.Translate(rect.Left, rect.Top);
+            canvas.Scale(rect.Height / svgSize.Height);
+            canvas.DrawPicture(svg.Picture, new SKPaint { Color = new SKColor(255, 255, 255, onOpacity) });
+            canvas.ResetMatrix();
         }
     }
 }
