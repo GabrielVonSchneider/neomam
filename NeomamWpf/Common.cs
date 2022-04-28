@@ -18,6 +18,7 @@ namespace NeomamWpf
         public Note Note { get; }
         public DrumNote? DrumConfig { get; set; }
         public int NoteNumber => this.DrumConfig?.OutputNoteNumber ?? Note.NoteNumber;
+        public double HeightMultiplier => this.DrumConfig?.HeightMultiplier ?? 1;
     }
 
     public class ConfiguredTrack
@@ -57,7 +58,8 @@ namespace NeomamWpf
 
             var allNotes = this.ConfiguredTracks.SelectMany(t => t.Notes).ToList();
             this.MaxNote = allNotes.Max(n => n.NoteNumber) + 1; // leave single note border
-            this.MinNote = allNotes.Min(n => n.NoteNumber) - 1; // leave single note border
+            this.MinNote = allNotes.Min(n => n.NoteNumber - ((int)Math.Ceiling(n.HeightMultiplier)) - 1) - 1; // leave single note border
+
             this.VerticalNotes = this.MaxNote - this.MinNote + 1;
         }
 
@@ -68,9 +70,6 @@ namespace NeomamWpf
         public List<ConfiguredTrack> ConfiguredTracks { get; }
         public int MinNote { get; }
         public int MaxNote { get; }
-
-        //calculate the max.
-        //calculate some kind of slot map? x let's just stick to conversion for now
     }
 
     internal static class Common
@@ -117,8 +116,6 @@ namespace NeomamWpf
             var bounds = canvas.DeviceClipBounds;
             canvas.Clear();
             canvas.DrawRect(bounds, new SKPaint { Color = context.Config.GetMediaBackColor().ToSkia() });
-
-            
 
             var slotHeight = bounds.Height / context.VerticalNotes;
             var centerX = bounds.Width / 2;
@@ -168,7 +165,6 @@ namespace NeomamWpf
                                 }
                                 else
                                 {
-                                    //fade out
                                     var delta = tick - note.Note.Time;
                                     if (delta > ticksFadeout)
                                     {

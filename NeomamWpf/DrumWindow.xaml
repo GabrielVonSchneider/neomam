@@ -7,7 +7,7 @@
     xmlns:local="clr-namespace:NeomamWpf"
     mc:Ignorable="d"
     Title="DrumWindow" Height="380" Width="527"
-    d:DataContext="{d:DesignInstance Type=local:DrumTrackConfig}"
+    d:DataContext="{d:DesignInstance Type=local:DrumTrackConfigViewModel}"
     xmlns:skia="clr-namespace:SkiaSharp.Views.WPF;assembly=SkiaSharp.Views.WPF"
 >
     <Grid>

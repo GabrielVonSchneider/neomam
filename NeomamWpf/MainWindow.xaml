@@ -7,7 +7,7 @@
     xmlns:local="clr-namespace:NeomamWpf"
     mc:Ignorable="d"
     xmlns:skia="clr-namespace:SkiaSharp.Views.WPF;assembly=SkiaSharp.Views.WPF"
-    Title="neomam" Height="450" Width="800"
+    Title="{Binding Title}" Height="450" Width="800"
     xmlns:colorpicker="clr-namespace:ColorPicker;assembly=ColorPicker"
     d:DataContext="{d:DesignInstance Type=local:MainViewModel}"
 >
@@ -21,6 +21,7 @@
                 <MenuItem Header="_Open" Click="ClickFileOpen"/>
                 <MenuItem Header="Open _Project" Click="ClickOpenProject"/>
                 <MenuItem Header="_Save Project" Click="SaveProject_Click"/>
+                <MenuItem Header="Save Project _As" Click="SaveProjectAs_Click"/>
                 <MenuItem Header="_Render" Click="Render"/>
             </MenuItem>
         </Menu>

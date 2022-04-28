@@ -63,7 +63,10 @@ namespace NeomamWpf
         {
             var window = new DrumWindow
             { 
-                DataContext = this.ViewModel?.Dto.Drums ?? throw new InvalidOperationException()
+                DataContext = new DrumTrackConfigViewModel(
+                        this.ViewModel?.Dto.Drums ?? throw new InvalidOperationException()
+                    ),
+                Owner = this.GetMainWindow(),
             };
 
             window.Show();

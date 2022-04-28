@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace NeomamWpf
 {
-    public class RenderViewModel : ViewModelBase
+    public class RenderViewModel : NeomamViewModel
     {
         private RenderContext _renderCtx;
         public double MaxMicroseconds { get; set; }

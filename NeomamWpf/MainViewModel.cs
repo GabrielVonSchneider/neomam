@@ -13,13 +13,28 @@ namespace NeomamWpf
 {
     public class MainViewModel : ViewModelBase
     {
-        public MainViewModel()
+        public static readonly MainViewModel Instance = new MainViewModel();
+
+        private MainViewModel()
         {
+        }
+
+        public static void NotifyChange()
+        {
+            Instance.Dirty = true;
+            Instance.Redraw?.Invoke();
         }
 
         public SKCanvas? DrawSurface { get; set; }
 
         private Config _config = new();
+
+        private string? _projectPath;
+        public string? ProjectPath
+        {
+            get => this._projectPath;
+            set => this.Set(ref this._projectPath, value);
+        }
 
         public event Action? Redraw;
         public MidiFile? MidiFile
@@ -31,6 +46,15 @@ namespace NeomamWpf
                 this.MaxMicrosecond = (this._midiFile?.GetTotalMicroseconds() ?? 0);
             }
         }
+
+        private bool _dirty;
+        public bool Dirty
+        {
+            get => this._dirty;
+            set => this.Set(ref this._dirty, value);
+        }
+
+        public string Title => this.DepProp(() => this.Dirty ? "neomam*" : "neomam");
 
         private double _maxMicrosecond;
         public double MaxMicrosecond
@@ -132,6 +156,21 @@ namespace NeomamWpf
             };
 
             this.InitChannels();
+            this.Dirty = true;
+        }
+
+        public void InitFromProject(string projectPath)
+        {
+            this.Tracks.Clear();
+            var tempDir = GetTempDir();
+            using var zipFile = ZipFile.OpenRead(projectPath);
+            zipFile.ExtractToDirectory(tempDir.FullName);
+            using var jsonFile = File.OpenRead(Path.Combine(tempDir.FullName, "config.json"));
+            this._config = JsonSerializer.Deserialize<Config>(jsonFile) ?? throw new InvalidOperationException();
+            this.MidiFile = MidiFile.Read(Path.Combine(tempDir.FullName, "midi.midi"));
+            this.InitChannels();
+            this.ProjectPath = projectPath;
+            this.Dirty = false;
         }
 
         public void Reorder(TrackConfigViewModel source, TrackConfigViewModel target, bool before)
@@ -171,18 +210,6 @@ namespace NeomamWpf
             this.InitChannels();
         }
 
-        public void InitFromProject(string configPath)
-        {
-            this.Tracks.Clear();
-            var tempDir = GetTempDir();
-            using var zipFile = ZipFile.OpenRead(configPath);
-            zipFile.ExtractToDirectory(tempDir.FullName);
-            using var jsonFile = File.OpenRead(Path.Combine(tempDir.FullName, "config.json"));
-            this._config = JsonSerializer.Deserialize<Config>(jsonFile) ?? throw new InvalidOperationException();
-            this.MidiFile = MidiFile.Read(Path.Combine(tempDir.FullName, "midi.midi"));
-            this.InitChannels();
-        }
-
         public void SaveProject(string filePath)
         {
             if (this.MidiFile is null)
@@ -204,6 +231,7 @@ namespace NeomamWpf
             File.Delete(filePath);
 
             ZipFile.CreateFromDirectory(tempDir.FullName, filePath);
+            this.Dirty = false;
         }
 
         private static DirectoryInfo GetTempDir()

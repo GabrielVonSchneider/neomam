@@ -42,7 +42,7 @@ namespace NeomamWpf
         public DrumTrackConfig? Drums { get; set; }
     }
 
-    public class TrackConfigViewModel : ViewModelBase
+    public class TrackConfigViewModel : NeomamViewModel
     {
         private MainViewModel _parent;
 

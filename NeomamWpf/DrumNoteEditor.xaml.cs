@@ -19,7 +19,7 @@ namespace NeomamWpf
             InitializeComponent();
         }
 
-        private DrumNote Vm => (DrumNote)this.DataContext;
+        private DrumNoteViewModel Vm => (DrumNoteViewModel)this.DataContext;
 
         private void PaintSurface(SKPaintSurfaceEventArgs e, string svgString)
         {
@@ -57,16 +57,6 @@ namespace NeomamWpf
             }
 
             this.PaintSurface(e, svgString);
-        }
-
-        private void ClickPickImage(object sender, RoutedEventArgs e)
-        {
-            
-        }
-
-        private void Border_MouseDown(object sender, MouseButtonEventArgs e)
-        {
-
         }
 
         private string? GetSvgString()

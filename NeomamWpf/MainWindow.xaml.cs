@@ -11,6 +11,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace NeomamWpf
@@ -20,7 +21,7 @@ namespace NeomamWpf
     /// </summary>
     public partial class MainWindow : Window
     {
-        private readonly MainViewModel _vm = new();
+        private readonly MainViewModel _vm = MainViewModel.Instance;
 
         public MainWindow()
         {
@@ -55,6 +56,37 @@ namespace NeomamWpf
             this.OpenFile("midi|*.mid");
         }
 
+        protected override void OnClosing(CancelEventArgs e)
+        {
+            base.OnClosing(e);
+            if (this._vm.Dirty)
+            {
+                var result = MessageBox.Show(
+                        "Save changes?",
+                        "neomam",
+                        MessageBoxButton.YesNoCancel,
+                        MessageBoxImage.Question
+                    );
+                if (result == MessageBoxResult.Yes)
+                {
+                    this.SaveProject();
+                }
+                else if (result == MessageBoxResult.Cancel)
+                {
+                    e.Cancel = true;
+                }
+            }
+        }
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+            if (e.Key == Key.S && Keyboard.IsKeyDown(Key.LeftCtrl) && this._vm.MidiFile != null)
+            {
+                this.SaveProject();
+            }
+        }
+
         private void OpenFile(string filter)
         {
             //load the midi file.
@@ -80,7 +112,29 @@ namespace NeomamWpf
             this._vm.DrawMidi(e.Surface.Canvas);
         }
 
+        private void SaveProject()
+        {
+            if (this._vm.ProjectPath is string projectPath && projectPath.Length > 0)
+            {
+                this._vm.SaveProject(this._vm.ProjectPath);
+            }
+            else
+            {
+                this.SaveProjectAs();
+            }
+        }
+
         private void SaveProject_Click(object sender, RoutedEventArgs e)
+        {
+            this.SaveProject();
+        }
+
+        private void SaveProjectAs_Click(object sender, RoutedEventArgs e)
+        {
+            this.SaveProjectAs();
+        }
+
+        private void SaveProjectAs()
         {
             var dlg = new SaveFileDialog { Filter = "neomam|*.neomam" };
             if (dlg.ShowDialog(this) == true)
