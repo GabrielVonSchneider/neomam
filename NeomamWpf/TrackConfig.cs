@@ -12,6 +12,19 @@ using System.Windows.Media;
 
 namespace NeomamWpf
 {
+    public class RenderConfig
+    {
+        public int HorizontalPixels { get; set; } = 1920;
+        public int VerticalPixels { get; set; } = 1080;
+        public double Framerate { get; set; } = 60;
+        public string? FfmpegArgs { get; set; }
+
+        public string GetResString()
+        {
+            return $"{this.HorizontalPixels}x{this.VerticalPixels}";
+        }
+    }
+
     public class Config
     {
         public string? BackColor { get; set; }
@@ -24,6 +37,8 @@ namespace NeomamWpf
         public Color GetMediaBackColor() => this.BackColor is string backColor
             ? (Color)ColorConverter.ConvertFromString(backColor)
             : Color.FromRgb(0, 0, 0);
+
+        public RenderConfig RenderConfig { get; set; } = new();
     }
 
     public class TrackConfig

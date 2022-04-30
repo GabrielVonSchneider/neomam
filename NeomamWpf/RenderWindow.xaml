@@ -16,6 +16,7 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="auto"/>
+            <RowDefinition Height="auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="auto"/>
         </Grid.RowDefinitions>
@@ -30,13 +31,54 @@
             <Separator Width="20" Opacity="0"/>
             <CheckBox IsChecked="{Binding DrawNoteOff}" VerticalAlignment="Center">Draw Note Off</CheckBox>
         </StackPanel>
-        <skia:SKElement
+        <DockPanel
             Grid.Row="1"
+            DataContext="{Binding RenderConfig}"
+        >
+            <CheckBox
+                Margin="3,0,3,0"
+                VerticalAlignment="Center"
+                IsChecked="{Binding UseCustomFfmpegArgs}" VerticalContentAlignment="Center"
+            >
+                ffmpeg args
+            </CheckBox>
+            <TextBlock
+                Margin="6,0,3,0"
+                Visibility="{Binding UseStandardFfmpegArgs, Converter={StaticResource bool2visconverter}}"
+                Text="Resolution"
+                VerticalAlignment="Center"
+            />
+            <TextBox
+                Visibility="{Binding UseStandardFfmpegArgs, Converter={StaticResource bool2visconverter}}"
+                Width="75"
+                Text="{Binding Resolution, FallbackValue='1920x1080'}"
+                VerticalAlignment="Center"
+            />
+            <Label
+                Margin="6,0,3,0"
+                Content="fps" VerticalAlignment="Center" VerticalContentAlignment="Center"
+            />
+            <TextBox
+                Visibility="{Binding UseStandardFfmpegArgs, Converter={StaticResource bool2visconverter}}"
+                Width="40"
+                VerticalAlignment="Center"
+                Text="{Binding Framerate}"
+            />
+            <TextBox
+                
+                Visibility="{Binding UseCustomFfmpegArgs, Converter={StaticResource bool2visconverter}}"
+                VerticalAlignment="Center"
+                HorizontalAlignment="Stretch"
+                Text="{Binding FfmpegArgs}"
+            />
+        </DockPanel>
+        <skia:SKElement
+            Grid.Row="2"
             Name="_outputControl"
             PaintSurface="SKElement_PaintSurface" Grid.RowSpan="2"
         />
         <Grid
-            Grid.Row="2"
+            Grid.Row="3"
         >
             <Grid.ColumnDefinitions>
                 <ColumnDefinition/>

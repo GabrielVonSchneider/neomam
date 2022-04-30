@@ -37,9 +37,9 @@ namespace NeomamWpf
 
         private readonly Dictionary<string, List<string>> _depProps = new();
 
-        protected void RaisePropChanged(string propName)
+        protected void RaisePropChanged([CallerMemberName] string? propName = null)
         {
-            this.RaisePropChangedInternal(propName);
+            this.RaisePropChangedInternal(propName ?? throw new ArgumentNullException(nameof(propName)));
             if (this._depProps.TryGetValue(propName, out var deps))
             {
                 foreach (var dep in deps)
@@ -49,7 +49,7 @@ namespace NeomamWpf
             }
         }
 
-        protected void RaisePropChangedInternal(string propName)
+        private void RaisePropChangedInternal(string propName)
             => this.OnPropertyChanged(new PropertyChangedEventArgs(propName));
 
         protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)

@@ -122,7 +122,11 @@ namespace NeomamWpf
 
         public RenderViewModel CreateRenderJob()
         {
-            return RenderViewModel.Create(this.MidiFile ?? throw new InvalidOperationException(), this._config);
+            return RenderViewModel.Create(
+                    this.MidiFile ?? throw new InvalidOperationException(),
+                    this._config,
+                    this
+                );
         }
 
         private bool InitChannels()
@@ -156,6 +160,7 @@ namespace NeomamWpf
             };
 
             this.InitChannels();
+            this.ProjectPath = null;
             this.Dirty = true;
         }
 
@@ -231,7 +236,14 @@ namespace NeomamWpf
             File.Delete(filePath);
 
             ZipFile.CreateFromDirectory(tempDir.FullName, filePath);
+            this.ProjectPath = filePath;
             this.Dirty = false;
+        }
+
+        internal void SetRenderConfig(RenderConfig renderConfig)
+        {
+            this._config.RenderConfig = renderConfig;
+            this.Dirty = true;
         }
 
         private static DirectoryInfo GetTempDir()

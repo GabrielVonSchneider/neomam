@@ -47,14 +47,20 @@ namespace NeomamWpf
                 return null;
             }
 
-            return new RenderContext(midiFile, config);
+            var configuredTracks = midiFile.GetConfiguredTracks(config).ToList();
+            if (!configuredTracks.SelectMany(t => t.Notes).Any())
+            {
+                return null;
+            }
+
+            return new RenderContext(midiFile, config, configuredTracks);
         }
 
-        private RenderContext(MidiFile midiFile, Config config)
+        private RenderContext(MidiFile midiFile, Config config, List<ConfiguredTrack> configuredTracks)
         {
             this.Midi = midiFile;
             this.Config = config;
-            this.ConfiguredTracks = midiFile.GetConfiguredTracks(Config).ToList();
+            this.ConfiguredTracks = configuredTracks;
 
             var allNotes = this.ConfiguredTracks.SelectMany(t => t.Notes).ToList();
             this.MaxNote = allNotes.Max(n => n.NoteNumber) + 1; // leave single note border
@@ -144,7 +150,7 @@ namespace NeomamWpf
                     var y1 = (context.MaxNote - note.NoteNumber) * slotHeight;
                     var y2 = y1 + noteHeight;
 
-                    if (x1 < bounds.Width)
+                    if (x1 < bounds.Width && x2 > (-bounds.Width))
                     {
                         bool noteIsOn = note.Note.Time <= tick && (note.Note.Time + note.Note.Length) >= tick;
                         if ((noteIsOn && !context.Config.DrawNoteOn) || (!noteIsOn && !context.Config.DrawNoteOff))

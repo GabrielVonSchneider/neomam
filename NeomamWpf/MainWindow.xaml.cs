@@ -56,25 +56,38 @@ namespace NeomamWpf
             this.OpenFile("midi|*.mid");
         }
 
+        private bool SaveQuery()
+        {
+            if (!this._vm.Dirty)
+            {
+                return true;
+            }
+
+            var result = MessageBox.Show(
+                    "Save changes?",
+                    "neomam",
+                    MessageBoxButton.YesNoCancel,
+                    MessageBoxImage.Question
+                );
+            switch (result)
+            {
+                case MessageBoxResult.Yes:
+                    this.SaveProject();
+                    return true;
+                case MessageBoxResult.No:
+                    return true;
+                default:
+                case MessageBoxResult.Cancel:
+                    return false;
+            }
+        }
+
         protected override void OnClosing(CancelEventArgs e)
         {
             base.OnClosing(e);
-            if (this._vm.Dirty)
+            if (!this.SaveQuery())
             {
-                var result = MessageBox.Show(
-                        "Save changes?",
-                        "neomam",
-                        MessageBoxButton.YesNoCancel,
-                        MessageBoxImage.Question
-                    );
-                if (result == MessageBoxResult.Yes)
-                {
-                    this.SaveProject();
-                }
-                else if (result == MessageBoxResult.Cancel)
-                {
-                    e.Cancel = true;
-                }
+                e.Cancel = true;
             }
         }
 
@@ -89,6 +102,11 @@ namespace NeomamWpf
 
         private void OpenFile(string filter)
         {
+            if (!this.SaveQuery())
+            {
+                return;
+            }
+
             //load the midi file.
             var dlg = new OpenFileDialog { Filter = filter, };
 

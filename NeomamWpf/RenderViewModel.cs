@@ -4,6 +4,7 @@ using SkiaSharp;
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -16,12 +17,15 @@ namespace NeomamWpf
 
         private CancellationTokenSource _cancelSource = new CancellationTokenSource();
 
-        public RenderViewModel(MidiFile midiFile, Config config)
+        public RenderConfigViewModel RenderConfig { get; }
+
+        public RenderViewModel(MidiFile midiFile, Config config, MainViewModel parent)
         {
             this._renderCtx = RenderContext.Get(midiFile, config) ?? throw new InvalidOperationException("Tried to render empty file.");
             this.MaxMicroseconds = this._renderCtx.Midi.GetTotalMicroseconds();
             this.PropertyChanged += this.OwnPropChanged;
             this._endTime = TimeSpan.FromMilliseconds(this.MaxMicroseconds / 1000);
+            this.RenderConfig = new RenderConfigViewModel(config.RenderConfig, parent);
         }
 
         private void OwnPropChanged(object? sender, PropertyChangedEventArgs e)
@@ -114,8 +118,11 @@ namespace NeomamWpf
         {
             var microsecond = (this._startTime.TotalMilliseconds) * 1000;
             var tempoMap = this._renderCtx.Midi.GetTempoMap();
-            var microsecondsIncrement = 1 / 60D * 1000 * 1000;
-            using var surface = SKSurface.Create(new SKImageInfo(1920, 1080));
+            var microsecondsIncrement = 1 / this.Config.RenderConfig.Framerate * 1000 * 1000;
+            using var surface = SKSurface.Create(new SKImageInfo(
+                    this.Config.RenderConfig.HorizontalPixels,
+                    this.Config.RenderConfig.VerticalPixels
+                ));
 
             var ctx = SynchronizationContext.Current ?? throw new InvalidOperationException();
             this._cancelSource = new CancellationTokenSource();
@@ -124,10 +131,21 @@ namespace NeomamWpf
             await Task.Run(() =>
             {
                 using var proc = new Process();
+                if (this.Config.RenderConfig.FfmpegArgs is string ffmpegArgs)
+                {
+                    ffmpegArgs = ffmpegArgs.Replace("%filename%", filename);
+                }
+                else
+                {
+                    var resString = this.Config.RenderConfig.GetResString();
+                    var fps = this.Config.RenderConfig.Framerate;
+                    ffmpegArgs = $"-y -f rawvideo -pix_fmt bgra -s {resString} -r {fps} -i - -c:v libx264 -preset slow -crf 18 -pix_fmt yuv420p {filename}";
+                }
+
                 proc.StartInfo = new ProcessStartInfo
                 {
                     FileName = "ffmpeg",
-                    Arguments = $"-y -f rawvideo -pix_fmt bgra -s 1920x1080 -r 60 -i - {filename}",
+                    Arguments = ffmpegArgs,
                     CreateNoWindow = true,
                     RedirectStandardInput = true,
                 };
@@ -160,14 +178,85 @@ namespace NeomamWpf
             this.Busy = false;
         }
 
-        public static RenderViewModel Create(MidiFile file, Config config)
+        public static RenderViewModel Create(MidiFile file, Config config, MainViewModel parent)
         {
-            return new RenderViewModel(file.Clone(), config.CloneByJson());
+            return new RenderViewModel(file.Clone(), config.CloneByJson(), parent);
         }
 
         public void Draw(SKCanvas canvas, double microsecond)
         {
             Common.DrawMidi(canvas, this._renderCtx, microsecond);
+        }
+    }
+
+    public class RenderConfigViewModel : ViewModelBase
+    {
+        private readonly RenderConfig _dto;
+        private readonly MainViewModel _parent;
+
+        public RenderConfigViewModel(RenderConfig dto, MainViewModel parent)
+        {
+            this._dto = dto;
+            this._parent = parent;
+        }
+
+        protected override void OnPropertyChanged(PropertyChangedEventArgs args)
+        {
+            base.OnPropertyChanged(args);
+            this._parent.SetRenderConfig(this._dto);
+        }
+
+        public string Resolution
+        {
+            get => this._dto.GetResString();
+            set
+            {
+                var match = Regex.Match(value, @"(\d+)x(\d+)");
+                if (match.Success)
+                {
+                    this._dto.HorizontalPixels = int.Parse(match.Groups[1].Value);
+                    this._dto.VerticalPixels = int.Parse(match.Groups[2].Value);
+                    this.RaisePropChanged(nameof(Resolution));
+                }
+            }
+        }
+
+        public string? FfmpegArgs
+        {
+            get => this._dto.FfmpegArgs;
+            set => this.Set(() => this.FfmpegArgs, () => this._dto.FfmpegArgs = value);
+        }
+
+        public double Framerate
+        {
+            get => this._dto.Framerate;
+            set => this.Set(() => this.Framerate, () => this._dto.Framerate = value);
+        }
+
+        public bool UseStandardFfmpegArgs => this.DepProp(() => !this.UseCustomFfmpegArgs);
+
+        public bool UseCustomFfmpegArgs
+        {
+            get => !string.IsNullOrWhiteSpace(this.FfmpegArgs);
+            set
+            {
+                if (value == this.UseCustomFfmpegArgs)
+                {
+                    return;
+                }
+
+                if (value)
+                {
+                    var resString = this._dto.GetResString();
+                    this.FfmpegArgs = $"-y -f rawvideo -pix_fmt bgra -s {resString} -r {this._dto.Framerate} -i - -c:v libx264 -preset slow -crf 18 -pix_fmt yuv420p %filename%";
+                }
+                else
+                {
+                    this.FfmpegArgs = null;
+                }
+
+                this.RaisePropChanged();
+            }
         }
     }
 }
